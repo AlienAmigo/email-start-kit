@@ -5,6 +5,7 @@ node_modules/
 .vscode/
 build/
 .idea/
+_data/
 .idea
 .DS_Store
 *.log
@@ -13,6 +14,6 @@ build/
 *.zip
 .publish
 ex_files
-package-lock.json`
+package-lock.json
 Thumbs.db
 __MACOSX/
