@@ -7,6 +7,7 @@ const prettyHtml = require("gulp-pretty-html");
 const replace = require("gulp-replace");
 const del = require("del");
 const inlineCss = require('gulp-inline-css');
+const inline = require('gulp-inline');
 
 const nth = {};
 nth.config = require("./config.js");
@@ -95,6 +96,30 @@ function copyImages() {
 }
 exports.copyImages = copyImages;
 
+function copyHTML() {
+  return src(dir.src + "*.html").pipe(
+    dest(dir.build)
+  );
+}
+exports.copyHTML = copyHTML;
+
+function copyCSS() {
+  return src(dir.src + "css/*.css").pipe(
+    dest(dir.build + "css/")
+  );
+}
+exports.copyHTML = copyHTML;
+
+function compileMailHTML64() {
+  return src(dir.src + "*.html")
+  .pipe(inline({
+    base: dir.src,
+    // disabledTypes: ['svg', 'img', 'js'], // Only inline css files
+    // ignore: ['./css/do-not-inline-me.css']
+  }))
+  .pipe(dest(dir.build));
+}
+
 function compileMailHTML() {
   return src(dir.src + '*.html')
         .pipe(inlineCss({
@@ -118,7 +143,8 @@ function serve() {
     [dir.src + "scss/**/*.scss"],
     compileStyles
   );
-  watch([dir.src + "*.html"], compileMailHTML);
+  watch([dir.src + "*.html"], copyHTML);
+  watch([dir.src + "*.html"], copyHTML);
   watch([dir.src + "scss/**/*.{css,sass,scss}"], compileStyles);
   watch([dir.src + "img/**/*.{jpg,jpeg,png,svg,webp,gif}"], copyImages);
   watch([dir.src + "pug/*.pug"], compilePug);
@@ -138,12 +164,22 @@ exports.build = series(
   )
 );
 
+exports.build64 = series(
+  clean,
+  parallel(
+    compileStyles,
+    compilePug,
+    compileMailHTML64
+  )
+);
+
 exports.default = series(
   clean,
   parallel(
     compileStyles,
     compilePug,
-    compileMailHTML,
+    compileHTML,
+    copyCSS,
     copyImages
   ),
   serve
