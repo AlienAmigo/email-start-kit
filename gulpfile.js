@@ -1,3 +1,5 @@
+'use strict'
+
 const { series, parallel, src, dest, watch } = require("gulp");
 const plumber = require("gulp-plumber");
 const sass = require("gulp-sass")(require('sass'));
@@ -7,7 +9,8 @@ const prettyHtml = require("gulp-pretty-html");
 const replace = require("gulp-replace");
 const del = require("del");
 const inlineCss = require('gulp-inline-css');
-const inline = require('gulp-inline');
+const tobase64 = require("gulp-img64");
+const cssBase64 = require('gulp-css-base64');
 
 const nth = {};
 nth.config = require("./config.js");
@@ -20,6 +23,7 @@ const options = nth.config.options;
  * @param  {string} path      Путь до файла или папки
  * @return {boolean}
  */
+
  function fileExist(filepath) {
   let flag = true;
   try {
@@ -91,7 +95,7 @@ exports.compilePug = compilePug;
 
 function copyImages() {
   return src(dir.src + "img/**/*.{jpg,jpeg,png,svg,webp,gif}").pipe(
-    dest(dir.build)
+    dest(dir.build + "img/")
   );
 }
 exports.copyImages = copyImages;
@@ -108,29 +112,37 @@ function copyCSS() {
     dest(dir.build + "css/")
   );
 }
-exports.copyHTML = copyHTML;
+exports.copyCSS = copyCSS;
+
+function base64CSS() {
+  return src(dir.src + "css/style.css")
+        .pipe(cssBase64({
+          baseDir: '.',
+          maxWeightResource: 1000000,
+        }))
+        .pipe(dest(file => file.base));
+}
+exports.base64CSS = base64CSS;
 
 function compileMailHTML64() {
-  return src(dir.src + "*.html")
-  .pipe(inline({
-    base: dir.src,
-    // disabledTypes: ['svg', 'img', 'js'], // Only inline css files
-    // ignore: ['./css/do-not-inline-me.css']
-  }))
-  .pipe(dest(dir.build));
-}
+  return  src(dir.src + '*.html')
+          .pipe(tobase64())
+          .pipe(dest(file => file.base))
+      }
+exports.compileMailHTML64 = compileMailHTML64;
 
 function compileMailHTML() {
   return src(dir.src + '*.html')
-        .pipe(inlineCss({
+          .pipe(inlineCss({
             applyStyleTags: true,
             applyLinkTags: true,
             removeStyleTags: true,
             removeLinkTags: true,
             removeHtmlSelectors: true,
-        }))
+          }))
         .pipe(dest(dir.build));
-}
+      }
+exports.compileMailHTML = compileMailHTML;
 
 function serve() {
   browserSync.init({
@@ -144,7 +156,7 @@ function serve() {
     compileStyles
   );
   watch([dir.src + "*.html"], copyHTML);
-  watch([dir.src + "*.html"], copyHTML);
+  watch([dir.src + "css/**/*.css"], copyCSS);
   watch([dir.src + "scss/**/*.{css,sass,scss}"], compileStyles);
   watch([dir.src + "img/**/*.{jpg,jpeg,png,svg,webp,gif}"], copyImages);
   watch([dir.src + "pug/*.pug"], compilePug);
@@ -156,21 +168,19 @@ function serve() {
 
 exports.build = series(
   clean,
-  parallel(
-    compileStyles,
-    compilePug,
-    compileMailHTML,
-    copyImages
-  )
+  compileStyles,
+  compilePug,
+  compileMailHTML,
+  copyImages
 );
 
 exports.build64 = series(
   clean,
-  parallel(
-    compileStyles,
-    compilePug,
-    compileMailHTML64
-  )
+  compileStyles,
+  compilePug,
+  base64CSS,
+  compileMailHTML64,
+  compileMailHTML
 );
 
 exports.default = series(
@@ -178,7 +188,7 @@ exports.default = series(
   parallel(
     compileStyles,
     compilePug,
-    compileHTML,
+    copyHTML,
     copyCSS,
     copyImages
   ),
